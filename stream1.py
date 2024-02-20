@@ -1,53 +1,51 @@
+# This is a conceptual example and may require adjustments to work with your specific setup.
+
 import streamlit as st
-import fitz  # PyMuPDF for PDF processing
+import fitz  # PyMuPDF
 import os
 import openai
 
-# Function to extract text from all PDFs in a specified folder
+# Setup your OpenAI API key here
+openai.api_key = st.secrets["openai_key"]
+
+PDF_FOLDER_PATH = "data1"
+
+def extract_text_from_pdf(file_path):
+    doc = fitz.open(file_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+
 def load_and_extract_texts_from_folder(folder_path):
-    texts = {}
+    texts = []
     for filename in os.listdir(folder_path):
         if filename.endswith('.pdf'):
             file_path = os.path.join(folder_path, filename)
-            doc = fitz.open(file_path)
-            text = ""
-            for page in doc:
-                text += page.get_text()
-            texts[filename] = text
+            text = extract_text_from_pdf(file_path)
+            texts.append(text)
     return texts
 
-# Initialize Streamlit app
-st.title("Document Query Tool with Advanced Query Handling")
+def answer_complex_query(query, documents):
+    response = openai.Answer.create(
+        model="text-davinci-003",
+        question=query,
+        documents=documents,
+        search_model="davinci",
+        examples_context="In 2017, U.S. life expectancy was 78.6 years.",
+        examples=[("What is human life expectancy in the United States?", "78 years.")],
+        max_tokens=100
+    )
+    return response['answers'][0]
 
-# Load extracted texts from PDFs located in 'data1' folder
-extracted_texts = load_and_extract_texts_from_folder("data1")
+st.title("Complex Query Handling with OpenAI")
 
-# Input for complex queries
-query = st.text_input("Enter your complex query:")
+# Assuming PDFs are preloaded in the 'data1' folder, extract texts
+extracted_texts = load_and_extract_texts_from_folder(PDF_FOLDER_PATH)
 
-if query and extracted_texts:
-    # Combine texts for processing (consider optimizing based on your needs)
-    combined_text = " ".join(extracted_texts.values())[:4000]  # Limit to 4000 characters for API constraints
-    
-    # OpenAI API setup
-    openai.api_key = st.secrets["openai_key"]
-    
-    try:
-        # Using OpenAI's "davinci" engine for Q&A based on the combined text
-        response = openai.Completion.create(
-          engine="davinci",
-          prompt=f"Answer the following question based on the document: {query}",
-          temperature=0.5,
-          max_tokens=100,
-          top_p=1.0,
-          frequency_penalty=0.0,
-          presence_penalty=0.0,
-          stop=["\n"],
-          documents=[combined_text]  # Using the combined text as context
-        )
-        
-        # Displaying the response from OpenAI's model
-        st.text_area("Result", value=response.choices[0].text.strip(), height=300, help="Response from OpenAI's model.")
-    
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+query = st.text_input("Enter your question:")
+
+if query:
+    # Assuming you want to use all extracted texts for the query context
+    answer = answer_complex_query(query, extracted_texts)
+    st.text_area("Answer", value=answer, height=300)
