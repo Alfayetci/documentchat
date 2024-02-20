@@ -27,15 +27,15 @@ def load_and_extract_texts_from_folder(folder_path):
     return texts
 
 def answer_complex_query(query, documents):
-    response = openai.Answer.create(
-        model="text-davinci-003",
-        question=query,
-        documents=documents,
-        search_model="davinci",
-        examples_context="In 2017, U.S. life expectancy was 78.6 years.",
-        examples=[("What is human life expectancy in the United States?", "78 years.")],
-        max_tokens=100
-    )
+    response = openai.Completion.create(
+  model="text-davinci-003",
+  prompt="Given the following documents: ...\n\nQ: What is the question?\nA:",
+  temperature=0.5,
+  max_tokens=150,
+  top_p=1.0,
+  frequency_penalty=0.0,
+  presence_penalty=0.0
+)
     return response['answers'][0]
 
 st.title("Complex Query Handling with OpenAI")
